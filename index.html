@@ -389,14 +389,17 @@ function startListener() {
   if (adminListener) { adminListener(); adminListener = null; }
   if (!currentSession) return;
 
-  // Listen only to requests of current session using orderByChild + equalTo
-  // This requires a Firebase index — if not set, falls back gracefully
-  const ref = DB.ref('requests').orderByChild('sessionId').equalTo(currentSession.id);
+  const ref = DB.ref('requests');
 
   const handler = snap => {
     allRequests = [];
     if (snap.exists()) {
-      snap.forEach(c => allRequests.push({ id: c.key, ...c.val() }));
+      snap.forEach(c => {
+        const val = c.val();
+        if (val.sessionId === currentSession.id) {
+          allRequests.push({ id: c.key, ...val });
+        }
+      });
     }
     allRequests.sort((a, b) => a.createdAt > b.createdAt ? 1 : -1);
     renderQueue();
