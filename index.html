@@ -480,6 +480,9 @@ function route() {
       document.getElementById('admin-session-info').innerHTML = '<span class="badge-dot"></span>LIVE · ' + esc(s.title);
       document.getElementById('session-title').textContent = s.title;
       startListener();
+    }).catch(err => {
+      document.getElementById('admin-session-info').innerHTML = '⚠️ 連線失敗，請重新整理';
+      console.error(err);
     });
   } else {
     showPage('pg-request');
@@ -494,18 +497,30 @@ document.getElementById('btn-cancel-session').onclick = () =>
   document.getElementById('modal-session').classList.remove('show');
 document.getElementById('btn-confirm-session').onclick = async () => {
   const title = document.getElementById('inp-session-name').value.trim() || 'New Set';
-  if (adminListener) { adminListener(); adminListener = null; }
-  await DB.ref('sessions/' + currentSession.id).update({ status: 'ENDED', endTime: nowISO() });
-  currentSession = null; // clear cache so next call creates new session
-  const s = await getOrCreateSession();
-  await DB.ref('sessions/' + s.id).update({ title });
-  currentSession.title = title;
-  document.getElementById('modal-session').classList.remove('show');
-  document.getElementById('admin-session-info').innerHTML = '<span class="badge-dot"></span>LIVE · ' + esc(title);
-  document.getElementById('session-title').textContent = title;
-  allRequests = [];
-  _lastRendered = '';
-  startListener();
+  const btn = document.getElementById('btn-confirm-session');
+  btn.disabled = true;
+  btn.textContent = '處理中...';
+  try {
+    if (adminListener) { adminListener(); adminListener = null; }
+    if (currentSession) {
+      await DB.ref('sessions/' + currentSession.id).update({ status: 'ENDED', endTime: nowISO() });
+    }
+    currentSession = null;
+    const s = await getOrCreateSession();
+    await DB.ref('sessions/' + s.id).update({ title });
+    currentSession.title = title;
+    document.getElementById('modal-session').classList.remove('show');
+    document.getElementById('admin-session-info').innerHTML = '<span class="badge-dot"></span>LIVE · ' + esc(title);
+    document.getElementById('session-title').textContent = title;
+    allRequests = [];
+    _lastRendered = '';
+    startListener();
+  } catch(err) {
+    alert('開新時段失敗，請重試\n' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'CONFIRM 確認';
+  }
 };
 
 // ── Firebase Index setup reminder (one-time console message) ──
